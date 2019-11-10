@@ -1,8 +1,6 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use Symfony\Component\DomCrawler\Crawler;
-
 $config = new MyConfig();
 $db = new Db();
 $db->DbConnect($config->mysqlHost,$config->mysqlUser,$config->mysqlPass,$config->mysqlDb);
@@ -27,7 +25,9 @@ if ($config->url == '/robots.txt') {
                 $sender->AddDataMultiContent();
             } else {
                 $sender->AddDataRead();
+                // определяем ссылки на другие страницы
                 $sender->AddDataReadOutlink();
+                // определяем данные каталога
                 $sender->AddDataContent();
             }
         };

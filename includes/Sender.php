@@ -230,15 +230,26 @@ class Sender
     public function AddDataMultiContent()
     {
         $data['content'] = '';
-        $sql = 'select * from ' . $this->hostconfig['content'] . ' where host=%s and (locate(%s,uri)>0 or %s="index.php") order by id desc, sape desc, count desc limit 0,10 ';
-        $contentcat = $this->db->DbGet(3, $sql, $this->config->host, $this->config->url, $this->config->url);
+        $sql = 'select * from ' . $this->hostconfig['content'] 
+             . ' where host=%s and (locate(%s,uri)>0 or %s="index.php" '
+             . ' or cat_id in (select id from '.$this->hostconfig['cat'].' cat  where cat.alias=%s)) order by id desc, sape desc, count desc limit 0,10 ';
+        $contentcat = $this->db->DbGet(3, $sql, $this->config->host, $this->config->url, $this->config->url,$this->config->url);
         $i = 0;
         foreach ($contentcat as $cc) {
             $i++;
             $c2 = (new Crawler($cc['content']))->filter('h1');
-            $c3 = (new Crawler($cc['content']))->filter('p');
+            $c3 = (new Crawler($cc['content']))->filter('p')->each(function (Crawler $node, $i) {
+                return $node->html();
+            });
             if (count($c2) && count($c3)) {
-                $data['content'] .= '<a href="' . $cc['uri'] . '"><h1>' . $c2->text() . '</h1> </a>' . preg_replace('|<a[^>]+>([^<]+)</a>|ism', '$1', '<p>' . $c3->text()) . '</p>' . '<a href="' . $cc['uri'] . '">Продолжение ...</a>';
+                if ((trim($c3[0])=='') && isset($c3[1])){
+                    $p=$c3[1];
+                } else {
+                    $p=$c3[0];
+                }
+                $data['content'] .= '<a href="' . $cc['uri'] . '"><h1>' . $c2->text() . '</h1> </a>'
+                    . preg_replace('|<a[^>]+>([^<]+)</a>|ism', '$1', '<p>'
+                    . $p) . '</p>' . '<a href="' . $cc['uri'] . '">Продолжение ...</a>';
             }
         };
         if (($this->config->url != '/sitemap') && ($i == 0)) {
@@ -281,7 +292,7 @@ class Sender
 				union all
 				select u.content, u.uri, u.id, if(cat.alias="' . $this->config->url . '",1000000+u.id,u.id) as count, 2 as lvl, cat.sort, u.sape 
 				from ' . $this->hostconfig['content'] . ' u, ' . $this->hostconfig['cat'] . ' cat where u.host=%s and cat.id=u.cat_id and locate(cat.alias,"' . $this->config->url . '")>0  
-				order by sort, lvl, id desc, sape desc, count limit 0,100';
+				order by sort, lvl, id desc, sape desc, count limit 0,50';
         $links = $this->db->DbGet(3, $sql, $this->config->host, $this->config->host);
         $lastlvl = 0;
         foreach ($links as $link) {
@@ -347,7 +358,7 @@ class Sender
             };
             if ($uri == '') $uri = ('/') . Utils::encodestring($h1);
 
-            $this->db->DbUpdate("insert into " . $this->hostconfig['content'] . " set content=%s, host=%s, yandex=0, link=0, sape=2,uri=%s, cat_id=%d ",  ('<h1>') . $h1 . ('</h1>') . $content, $this->config->host, $alias . $uri, $cat_id);
+            $this->db->DbUpdate("insert into " . $this->hostconfig['content'] . " set content=%s, host=%s, yandex=0, link=0, sape=2,uri=%s, cat_id=%d, description=%s ",  ('<h1>') . $h1 . ('</h1>') . $content, $this->config->host, $alias . $uri, $cat_id,"");
         };
 
         if (isset ($post['pass']) && $post['repl1'] && isset ($post['repl2'])) {
@@ -382,7 +393,10 @@ class Sender
         $data['content'] .= '</select><br>
 Текст статьи<br>
 <textarea name="content" cols="65" rows="20">
-<p></p>
+<p>
+</p>
+<p>
+</p>
 <img src="../images/  " width="500">
 </textarea>
 <input type="submit" value="Отправить"> 

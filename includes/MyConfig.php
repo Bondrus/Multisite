@@ -12,14 +12,15 @@ class MyConfig
     public $url = '';
     public $podstroka=0;
 
-    public function __construct()
+    public function __construct(int $typeError = 0)
     {
+	$this->typeError = $typeError;
         $this->mysqlHost = "localhost";
         $this->mysqlUser = "";
         $this->mysqlPass = "";
         $this->mysqlDb = "";
         // параметры вывода ошибок
-        if ($this->typeError == 0) {
+        if ($this->typeError != 0) {
             ini_set('display_startup_errors', 1);
             ini_set('display_errors', 1);
             error_reporting(E_ALL);
